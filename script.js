@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle File Selection
     const handleFile = (file) => {
         if (!file || !file.type.startsWith('image/')) {
-            alert('Please upload a valid image file.');
+            alert('请上传有效的图片文件。');
             return;
         }
 
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const processImage = async (action) => {
         if (!originalImage) {
-            alert('Please upload an image first.');
+            alert('请先上传图片。');
             return;
         }
 
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 } catch (err) {
                     console.error(err);
-                    alert('An error occurred during processing: ' + err.message);
+                    alert('处理过程中发生错误: ' + err.message);
                 } finally {
                     loading.classList.add('hidden');
                     buttons.forEach(btn => btn.disabled = false);
