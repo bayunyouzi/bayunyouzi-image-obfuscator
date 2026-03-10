@@ -1,209 +1,156 @@
 // hilbert.js
 
-class Hilbert {
-    constructor(order) {
-        this.n = 1 << order;
-        this.totalPoints = this.n * this.n;
-    }
+// Generalized Hilbert ('gilbert') space-filling curve for arbitrary-sized 2D rectangular grids.
+// Based on the provided implementation.
 
-    xy2d(x, y) {
-        let rx, ry, s, d = 0;
-        for (s = this.n / 2; s > 0; s /= 2) {
-            rx = (x & s) > 0 ? 1 : 0;
-            ry = (y & s) > 0 ? 1 : 0;
-            d += s * s * ((3 * rx) ^ ry);
-            [x, y] = this.rot(s, x, y, rx, ry);
+function gilbert2d(width, height) {
+    /**
+     * Generalized Hilbert ('gilbert') space-filling curve for arbitrary-sized
+     * 2D rectangular grids. Generates discrete 2D coordinates to fill a rectangle
+     * of size (width x height).
+     */
+    const coordinates = [];
+    if (width >= height) {
+        generate2d(0, 0, width, 0, 0, height, coordinates);
+    } else {
+        generate2d(0, 0, 0, height, width, 0, coordinates);
+    }
+    return coordinates;
+}
+
+function generate2d(x, y, ax, ay, bx, by, coordinates) {
+    const w = Math.abs(ax + ay);
+    const h = Math.abs(bx + by);
+    const dax = Math.sign(ax), day = Math.sign(ay); // unit major direction
+    const dbx = Math.sign(bx), dby = Math.sign(by); // unit orthogonal direction
+    
+    if (h === 1) {
+        // trivial row fill
+        for (let i = 0; i < w; i++) {
+            coordinates.push([x, y]);
+            x += dax;
+            y += day;
         }
-        return d;
+        return;
     }
-
-    d2xy(d) {
-        let rx, ry, s, t = d;
-        let x = 0;
-        let y = 0;
-        for (s = 1; s < this.n; s *= 2) {
-            rx = 1 & (t / 2);
-            ry = 1 & (t ^ rx);
-            [x, y] = this.rot(s, x, y, rx, ry);
-            x += s * rx;
-            y += s * ry;
-            t /= 4;
+    if (w === 1) {
+        // trivial column fill
+        for (let i = 0; i < h; i++) {
+            coordinates.push([x, y]);
+            x += dbx;
+            y += dby;
         }
-        return [x, y];
+        return;
     }
+    
+    let ax2 = Math.floor(ax / 2), ay2 = Math.floor(ay / 2);
+    let bx2 = Math.floor(bx / 2), by2 = Math.floor(by / 2);
+    const w2 = Math.abs(ax2 + ay2);
+    const h2 = Math.abs(bx2 + by2);
+    
+    if (2 * w > 3 * h) {
+        if ((w2 % 2) && (w > 2)) {
+            // prefer even steps
+            ax2 += dax;
+            ay2 += day;
+        }
+        // long case: split in two parts only
+        generate2d(x, y, ax2, ay2, bx, by, coordinates);
+        generate2d(x + ax2, y + ay2, ax - ax2, ay - ay2, bx, by, coordinates);
+    } else {
+        if ((h2 % 2) && (h > 2)) {
+            // prefer even steps
+            bx2 += dbx;
+            by2 += dby;
+        }
+        // standard case: one step up, one long horizontal, one step down
+        generate2d(x, y, bx2, by2, ax2, ay2, coordinates);
+        generate2d(x + bx2, y + by2, ax, ay, bx - bx2, by - by2, coordinates);
+        generate2d(x + (ax - dax) + (bx2 - dbx), y + (ay - day) + (by2 - dby),
+            -bx2, -by2, -(ax - ax2), -(ay - ay2), coordinates);
+    }
+}
 
-    rot(n, x, y, rx, ry) {
-        if (ry === 0) {
-            if (rx === 1) {
-                x = n - 1 - x;
-                y = n - 1 - y;
+// Image processing functions
+const ImageProcessor = {
+    // Encrypt (Obfuscate)
+    encrypt: (img, canvas) => {
+        return new Promise((resolve) => {
+            const width = canvas.width = img.width;
+            const height = canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            
+            const imgdata = ctx.getImageData(0, 0, width, height);
+            const imgdata2 = new ImageData(width, height);
+            
+            const curve = gilbert2d(width, height);
+            const offset = Math.round((Math.sqrt(5) - 1) / 2 * width * height);
+            
+            for(let i = 0; i < width * height; i++){
+                const old_pos = curve[i];
+                // New position logic from reference
+                const new_pos = curve[(i + offset) % (width * height)];
+                
+                // Calculate pixel indices
+                const old_p = 4 * (old_pos[0] + old_pos[1] * width);
+                const new_p = 4 * (new_pos[0] + new_pos[1] * width);
+                
+                // Copy pixel data (R, G, B, A)
+                // Reference copies FROM old_pos TO new_pos
+                // Wait, reference code:
+                // const old_pos = curve[i]
+                // const new_pos = curve[(i + offset) % (width * height)]
+                // const old_p = 4 * (old_pos[0] + old_pos[1] * width)
+                // const new_p = 4 * (new_pos[0] + new_pos[1] * width)
+                // imgdata2.data.set(imgdata.data.slice(old_p, old_p + 4), new_p)
+                //
+                // This means: Destination[new_pos] = Source[old_pos]
+                
+                // Using TypedArray set for speed
+                for(let j=0; j<4; j++) {
+                    imgdata2.data[new_p + j] = imgdata.data[old_p + j];
+                }
             }
-            return [y, x];
-        }
-        return [x, y];
-    }
-}
+            
+            ctx.putImageData(imgdata2, 0, 0);
+            resolve();
+        });
+    },
 
-// Pseudo-Random Number Generator
-function mulberry32(a) {
-    return function() {
-      var t = a += 0x6D2B79F5;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    }
-}
-
-class ImageScrambler {
-    constructor() {
-        this.hilbert = null;
-    }
-
-    // Get ordered list of valid coordinates in the image along the Hilbert curve
-    getHilbertPath(width, height) {
-        const maxDim = Math.max(width, height);
-        const order = Math.ceil(Math.log2(maxDim));
-        const hilbert = new Hilbert(order);
-        const n2 = hilbert.n * hilbert.n;
-        
-        // This can be memory intensive for large images.
-        // We optimize by storing flat indices: y * width + x
-        const path = new Uint32Array(width * height);
-        let ptr = 0;
-
-        // Iterate through Hilbert curve points
-        // Optimization: Use iterative generation to avoid d2xy overhead if possible?
-        // d2xy is O(log N). Total O(N^2 log N).
-        // For 4096^2, log N = 12. 16M * 12 ops is fine.
-        
-        for (let d = 0; d < n2; d++) {
-            const [x, y] = hilbert.d2xy(d);
-            if (x < width && y < height) {
-                path[ptr++] = y * width + x;
+    // Decrypt (De-obfuscate)
+    decrypt: (img, canvas) => {
+        return new Promise((resolve) => {
+            const width = canvas.width = img.width;
+            const height = canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            
+            const imgdata = ctx.getImageData(0, 0, width, height);
+            const imgdata2 = new ImageData(width, height);
+            
+            const curve = gilbert2d(width, height);
+            const offset = Math.round((Math.sqrt(5) - 1) / 2 * width * height);
+            
+            for(let i = 0; i < width * height; i++){
+                const old_pos = curve[i];
+                const new_pos = curve[(i + offset) % (width * height)];
+                
+                const old_p = 4 * (old_pos[0] + old_pos[1] * width);
+                const new_p = 4 * (new_pos[0] + new_pos[1] * width);
+                
+                // Reference code:
+                // imgdata2.data.set(imgdata.data.slice(new_p, new_p + 4), old_p)
+                // This means: Destination[old_pos] = Source[new_pos]
+                // This is the inverse operation.
+                
+                for(let j=0; j<4; j++) {
+                    imgdata2.data[old_p + j] = imgdata.data[new_p + j];
+                }
             }
-        }
-        return path;
+            
+            ctx.putImageData(imgdata2, 0, 0);
+            resolve();
+        });
     }
-
-    // Scramble logic
-    async scramble(imageData, key, iterations, mode = 'encrypt') {
-        const width = imageData.width;
-        const height = imageData.height;
-        const pixels = new Uint32Array(imageData.data.buffer); // View as 32-bit pixels (ABGR)
-        
-        // 1. Generate Hilbert Path
-        const path = this.getHilbertPath(width, height);
-        
-        // 2. Generate Permutation based on Key
-        // Simple hash of key string to seed
-        let seed = 0;
-        for (let i = 0; i < key.length; i++) {
-            seed = (seed + key.charCodeAt(i) * (i + 1)) | 0; // Simple hash
-        }
-        
-        // We want a permutation of indices [0, ..., path.length - 1]
-        // Strategy: "Sort by Random" is robust and easy to implement
-        // To support iterations, we apply it multiple times (or just change seed)
-        // For 'decrypt', we need the inverse permutation.
-        
-        // Let's generate a permutation map P where P[i] is the new position of the pixel at i
-        // Or P[i] is the source index for position i?
-        // Let's say dest[i] = src[P[i]].
-        // To decrypt: src[P[i]] = dest[i] => src[j] = dest[P^-1[j]]
-        
-        const L = path.length;
-        const P = new Uint32Array(L);
-        for(let i=0; i<L; i++) P[i] = i;
-
-        const prng = mulberry32(seed + 12345); // Seeded PRNG
-
-        // Fisher-Yates Shuffle to generate permutation P
-        // We only need to run this once to get a random permutation.
-        // But for "Sort by Random", we generate random values and sort indices.
-        // Fisher-Yates is O(N) but hard to invert unless we store the swaps.
-        // "Sort by Random" is O(N log N) but easy to invert (just invert the P map).
-        
-        // Let's use Sort by Random.
-        // Generate random keys
-        const keys = new Float64Array(L);
-        for(let i=0; i<L; i++) keys[i] = prng();
-        
-        // Sort indices based on keys
-        // We sort P array based on values in keys
-        P.sort((a, b) => keys[a] - keys[b]);
-        
-        // Now P holds the permutation.
-        // encrypt: new_path_index[i] = path[P[i]] (Wait, this permutes the ORDER)
-        
-        // Let's clarify:
-        // We have pixels in Hilbert order: H_pixels = [pixel(path[0]), pixel(path[1]), ...]
-        // We want to shuffle this array to Scrambled_H_pixels.
-        // Scrambled_H_pixels[i] = H_pixels[P[i]]
-        // Then write back: pixel(path[i]) = Scrambled_H_pixels[i]
-        //
-        // Decrypt:
-        // Read pixels: Scrambled_H_pixels[i] = pixel(path[i])
-        // Reverse shuffle: H_pixels[P[i]] = Scrambled_H_pixels[i] 
-        //                 => H_pixels[j] = Scrambled_H_pixels[P_inv[j]]
-        // Write back: pixel(path[j]) = H_pixels[j]
-        
-        // Calculate Inverse Permutation for decrypt
-        let map = P;
-        if (mode === 'decrypt') {
-            const P_inv = new Uint32Array(L);
-            for(let i=0; i<L; i++) P_inv[P[i]] = i;
-            map = P_inv;
-        }
-
-        // 3. Apply Permutation
-        const newPixels = new Uint32Array(L);
-        
-        // Read original pixels in Hilbert order
-        const hilbertPixels = new Uint32Array(L);
-        for(let i=0; i<L; i++) {
-            hilbertPixels[i] = pixels[path[i]];
-        }
-        
-        // Permute
-        if (mode === 'encrypt') {
-             for(let i=0; i<L; i++) {
-                 newPixels[i] = hilbertPixels[map[i]];
-             }
-        } else {
-             // For decrypt, we are reversing the operation:
-             // encrypted[i] = original[P[i]]
-             // we have encrypted, want original.
-             // original[P[i]] = encrypted[i] -> original[j] = encrypted[P_inv[j]]
-             // So:
-             for(let i=0; i<L; i++) {
-                 newPixels[i] = hilbertPixels[map[i]];
-             }
-        }
-        
-        // Wait, my logic above:
-        // Encrypt: dest[i] = src[P[i]]
-        // Decrypt: dest[i] = src[P_inv[i]]
-        // Yes, that's correct.
-        
-        // 4. Write back to image
-        // We write the new pixels back to the SAME Hilbert path positions?
-        // Or just fill the image line by line?
-        // If we write back to Hilbert path, we preserve the "Hilbert Scramble" effect.
-        // If we write linearly, we add another layer of scrambling (Hilbert -> Linear).
-        // The reference says "Based on Hilbert Curve", usually implies the data is treated as a Hilbert stream.
-        // Let's write back to the Hilbert path locations to keep the spatial property meaningful?
-        // Actually, if we just shuffle the stream and write back to the stream, the spatial locality of the *source* is lost.
-        // But if P is a "local" shuffle, it's preserved.
-        // Our P is global random (Maximum Chaos).
-        // If the user wants "Compression Resistance", maybe we should use a simpler P?
-        // But the user asked for "Rich functionality".
-        // Let's stick to global shuffle for now.
-        
-        // Optimization: Write directly to pixels array
-        for(let i=0; i<L; i++) {
-            pixels[path[i]] = newPixels[i];
-        }
-        
-        return imageData;
-    }
-}
+};

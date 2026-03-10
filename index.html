@@ -67,36 +67,19 @@
                     </div>
 
                     <div class="space-y-4">
-                        <h2 class="text-lg font-semibold text-gray-700">2. Settings</h2>
+                        <h2 class="text-lg font-semibold text-gray-700">2. Actions</h2>
                         
-                        <div>
-                            <label for="mode" class="block text-sm font-medium text-gray-700">Mode</label>
-                            <select id="mode" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border">
-                                <option value="encrypt">Obfuscate (Hide)</option>
-                                <option value="decrypt">De-obfuscate (Restore)</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="key" class="block text-sm font-medium text-gray-700">Key (Password)</label>
-                            <div class="mt-1 relative rounded-md shadow-sm">
-                                <input type="text" id="key" class="focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2" placeholder="Enter a secret key">
-                            </div>
-                            <p class="mt-1 text-xs text-gray-500">Remember this key to restore your image later.</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button id="encrypt-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Obfuscate
+                            </button>
+                            <button id="decrypt-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                De-obfuscate
+                            </button>
                         </div>
                         
-                        <div>
-                            <label for="iterations" class="block text-sm font-medium text-gray-700">Strength (Iterations)</label>
-                            <input type="range" id="iterations" min="1" max="5" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            <div class="flex justify-between text-xs text-gray-500">
-                                <span>Low</span>
-                                <span id="iterations-val">1</span>
-                                <span>High</span>
-                            </div>
-                        </div>
-
-                        <button id="process-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Process Image
+                        <button id="restore-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Restore Original
                         </button>
                     </div>
                 </div>

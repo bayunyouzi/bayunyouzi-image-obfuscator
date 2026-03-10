@@ -6,14 +6,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultCanvas = document.getElementById('result-canvas');
     const resultContainer = document.getElementById('result-container');
     const resultPlaceholder = document.getElementById('result-placeholder');
-    const processBtn = document.getElementById('process-btn');
+    
+    const encryptBtn = document.getElementById('encrypt-btn');
+    const decryptBtn = document.getElementById('decrypt-btn');
+    const restoreBtn = document.getElementById('restore-btn');
     const downloadBtn = document.getElementById('download-btn');
     const downloadActions = document.getElementById('download-actions');
     const loading = document.getElementById('loading');
-    const keyInput = document.getElementById('key');
-    const modeSelect = document.getElementById('mode');
-    const iterationsInput = document.getElementById('iterations');
-    const iterationsVal = document.getElementById('iterations-val');
 
     let originalImage = null;
     let processedImageData = null;
@@ -43,10 +42,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 originalPreview.src = e.target.result;
                 previewContainer.classList.remove('hidden');
                 
-                // Clear previous result
-                resultCanvas.classList.add('hidden');
-                resultPlaceholder.classList.remove('hidden');
-                downloadActions.classList.add('hidden');
+                // Set initial canvas size and draw image
+                resultCanvas.width = img.width;
+                resultCanvas.height = img.height;
+                const ctx = resultCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Show result canvas
+                resultCanvas.classList.remove('hidden');
+                resultPlaceholder.classList.add('hidden');
+                downloadActions.classList.remove('hidden');
                 processedImageData = null;
             };
             img.src = e.target.result;
@@ -80,99 +85,76 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Update Iterations Value
-    iterationsInput.addEventListener('input', (e) => {
-        iterationsVal.textContent = e.target.value;
-    });
-
-    // Process Image
-    processBtn.addEventListener('click', async () => {
+    const processImage = async (action) => {
         if (!originalImage) {
             alert('Please upload an image first.');
             return;
         }
 
-        const key = keyInput.value.trim();
-        if (!key) {
-            alert('Please enter a key.');
-            return;
-        }
-
-        const mode = modeSelect.value;
-        const iterations = parseInt(iterationsInput.value, 10);
-
         // UI Loading State
         loading.classList.remove('hidden');
-        processBtn.disabled = true;
+        const buttons = [encryptBtn, decryptBtn, restoreBtn, downloadBtn];
+        buttons.forEach(btn => btn.disabled = true);
 
-        // Use setTimeout to allow UI to update before heavy processing
-        setTimeout(async () => {
-            try {
-                // Draw original image to canvas to get data
-                const canvas = document.createElement('canvas');
-                canvas.width = originalImage.width;
-                canvas.height = originalImage.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(originalImage, 0, 0);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // Use requestAnimationFrame/setTimeout to allow UI to update
+        // Double rAF to ensure paint happens
+        requestAnimationFrame(() => {
+            requestAnimationFrame(async () => {
+                try {
+                    // We process what is currently on the result canvas
+                    // Or do we always process the original image?
+                    // The reference implementation operates on the currently displayed image (img).
+                    // "img" in reference is the display element.
+                    // Here we use resultCanvas as the source of truth for current state?
+                    // No, let's use the resultCanvas as the image source.
+                    
+                    // Create a temporary image from canvas to pass to processor
+                    // Or pass canvas directly. Our processor takes (img, canvas).
+                    
+                    const tempImg = new Image();
+                    tempImg.src = resultCanvas.toDataURL();
+                    
+                    await new Promise(r => tempImg.onload = r);
 
-                // Scramble
-                const scrambler = new ImageScrambler();
-                
-                // We need to implement scramble in hilbert.js properly
-                // Assuming ImageScrambler is available globally
-                
-                // For demo, let's just do one pass. Iterations can be added later.
-                // The scramble method in hilbert.js is async? No, but let's treat it as synchronous heavy task.
-                // Wait, I made it async in the definition.
-                
-                let currentImageData = imageData;
-                
-                if (mode === 'encrypt') {
-                    for(let i=0; i<iterations; i++) {
-                         await scrambler.scramble(currentImageData, key + (i > 0 ? i : ''), 1, 'encrypt');
+                    if (action === 'encrypt') {
+                        await ImageProcessor.encrypt(tempImg, resultCanvas);
+                    } else if (action === 'decrypt') {
+                        await ImageProcessor.decrypt(tempImg, resultCanvas);
+                    } else if (action === 'restore') {
+                        // Restore to original
+                        const ctx = resultCanvas.getContext('2d');
+                        resultCanvas.width = originalImage.width;
+                        resultCanvas.height = originalImage.height;
+                        ctx.drawImage(originalImage, 0, 0);
                     }
-                } else {
-                    // For decryption, we must apply the inverse operations in reverse order
-                    for(let i=iterations-1; i>=0; i--) {
-                         await scrambler.scramble(currentImageData, key + (i > 0 ? i : ''), 1, 'decrypt');
-                    }
+
+                } catch (err) {
+                    console.error(err);
+                    alert('An error occurred during processing: ' + err.message);
+                } finally {
+                    loading.classList.add('hidden');
+                    buttons.forEach(btn => btn.disabled = false);
                 }
+            });
+        });
+    };
 
-                // Show Result
-                resultCanvas.width = canvas.width;
-                resultCanvas.height = canvas.height;
-                const resultCtx = resultCanvas.getContext('2d');
-                resultCtx.putImageData(currentImageData, 0, 0);
-                
-                resultCanvas.classList.remove('hidden');
-                resultPlaceholder.classList.add('hidden');
-                downloadActions.classList.remove('hidden');
-                
-                processedImageData = currentImageData;
-
-            } catch (err) {
-                console.error(err);
-                alert('An error occurred during processing: ' + err.message);
-            } finally {
-                loading.classList.add('hidden');
-                processBtn.disabled = false;
-            }
-        }, 100);
+    encryptBtn.addEventListener('click', () => processImage('encrypt'));
+    decryptBtn.addEventListener('click', () => processImage('decrypt'));
+    
+    restoreBtn.addEventListener('click', () => {
+        if (!originalImage) return;
+        processImage('restore');
     });
 
     // Download
     downloadBtn.addEventListener('click', () => {
         if (!resultCanvas) return;
         
-        // Use quality 1.0 (max) for JPEG, or PNG for lossless
-        // The reference mentioned JPEG quality 1.
-        // We'll offer PNG by default for lossless de-obfuscation.
-        // If we use JPEG, artifacts will destroy the ability to de-obfuscate perfectly.
-        
+        // Use JPEG quality 1.0 as per reference (reference says quality 1)
         const link = document.createElement('a');
-        link.download = `obfuscated-${Date.now()}.png`;
-        link.href = resultCanvas.toDataURL('image/png');
+        link.download = `processed_image.jpg`;
+        link.href = resultCanvas.toDataURL('image/jpeg', 1.0);
         link.click();
     });
 });
