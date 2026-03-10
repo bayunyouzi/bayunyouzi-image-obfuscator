@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Obfuscator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .drop-zone.active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold text-gray-800">Image Obfuscator</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="#" class="text-gray-500 hover:text-gray-700">About</a>
+                    <a href="#" class="text-gray-500 hover:text-gray-700">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Left Column: Input -->
+                <div class="space-y-6">
+                    <h2 class="text-lg font-semibold text-gray-700">1. Upload Image</h2>
+                    <div id="drop-zone" class="drop-zone rounded-lg p-8 text-center cursor-pointer hover:bg-gray-50">
+                        <input type="file" id="file-input" class="hidden" accept="image/*">
+                        <div class="space-y-2">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <div class="text-sm text-gray-600">
+                                <span class="font-medium text-blue-600 hover:text-blue-500">Click to upload</span> or drag and drop
+                            </div>
+                            <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                    </div>
+
+                    <div id="preview-container" class="hidden space-y-4">
+                        <h3 class="text-sm font-medium text-gray-700">Original Preview</h3>
+                        <div class="relative rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center min-h-[200px]">
+                            <img id="original-preview" class="max-h-[400px] object-contain" src="" alt="Original">
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h2 class="text-lg font-semibold text-gray-700">2. Settings</h2>
+                        
+                        <div>
+                            <label for="mode" class="block text-sm font-medium text-gray-700">Mode</label>
+                            <select id="mode" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border">
+                                <option value="encrypt">Obfuscate (Hide)</option>
+                                <option value="decrypt">De-obfuscate (Restore)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="key" class="block text-sm font-medium text-gray-700">Key (Password)</label>
+                            <div class="mt-1 relative rounded-md shadow-sm">
+                                <input type="text" id="key" class="focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2" placeholder="Enter a secret key">
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">Remember this key to restore your image later.</p>
+                        </div>
+                        
+                        <div>
+                            <label for="iterations" class="block text-sm font-medium text-gray-700">Strength (Iterations)</label>
+                            <input type="range" id="iterations" min="1" max="5" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-xs text-gray-500">
+                                <span>Low</span>
+                                <span id="iterations-val">1</span>
+                                <span>High</span>
+                            </div>
+                        </div>
+
+                        <button id="process-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Process Image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Column: Result -->
+                <div class="space-y-6">
+                    <h2 class="text-lg font-semibold text-gray-700">3. Result</h2>
+                    <div class="bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 min-h-[400px] flex items-center justify-center relative" id="result-container">
+                        <p class="text-gray-400 text-center" id="result-placeholder">Process an image to see the result here</p>
+                        <canvas id="result-canvas" class="hidden max-h-[600px]"></canvas>
+                        
+                        <!-- Loading Spinner -->
+                        <div id="loading" class="hidden absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                        </div>
+                    </div>
+
+                    <div id="download-actions" class="hidden space-y-3">
+                        <button id="download-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            Download Result
+                        </button>
+                        <p class="text-xs text-center text-gray-500">Image quality may be slightly reduced due to processing.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">
+                &copy; 2026 Image Obfuscator. Powered by Hilbert Curves.
+            </p>
+        </div>
+    </footer>
+
+    <script src="hilbert.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
