@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
     const originalPreview = document.getElementById('original-preview');
-    const previewContainer = document.getElementById('preview-container');
+    const previewContainer = document.getElementById('preview-container'); // Legacy
     const resultCanvas = document.getElementById('result-canvas');
     const resultContainer = document.getElementById('result-container');
     const resultPlaceholder = document.getElementById('result-placeholder');
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const decryptBtn = document.getElementById('decrypt-btn');
     const restoreBtn = document.getElementById('restore-btn');
     const downloadBtn = document.getElementById('download-btn');
-    const downloadActions = document.getElementById('download-actions');
+    // const downloadActions = document.getElementById('download-actions'); // Now scoped locally
     const loading = document.getElementById('loading');
 
     let originalImage = null;
@@ -40,8 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
             img.onload = () => {
                 originalImage = img;
                 originalPreview.src = e.target.result;
-                previewContainer.classList.remove('hidden');
                 
+                // New UI Logic
+                const previewSection = document.getElementById('preview-section');
+                previewSection.classList.remove('hidden');
+                // Trigger reflow
+                void previewSection.offsetWidth;
+                previewSection.classList.remove('opacity-0', 'translate-y-4');
+                
+                const fileNameSpan = document.getElementById('file-name');
+                const imageInfoSpan = document.getElementById('image-info');
+                if(fileNameSpan) fileNameSpan.textContent = file.name;
+                if(imageInfoSpan) imageInfoSpan.textContent = `${img.width} x ${img.height}`;
+
                 // Set initial canvas size and draw image
                 resultCanvas.width = img.width;
                 resultCanvas.height = img.height;
@@ -51,7 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Show result canvas
                 resultCanvas.classList.remove('hidden');
                 resultPlaceholder.classList.add('hidden');
+                
+                const downloadActions = document.getElementById('download-actions');
                 downloadActions.classList.remove('hidden');
+                void downloadActions.offsetWidth;
+                downloadActions.classList.remove('opacity-0', 'translate-y-2');
+
                 processedImageData = null;
             };
             img.src = e.target.result;
