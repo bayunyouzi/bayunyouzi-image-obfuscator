@@ -1,37 +1,26 @@
-# Image Obfuscator
+# 小番茄图片混淆 (Image Obfuscator)
 
 A web-based tool to obfuscate images using Hilbert Space-Filling Curves.
 Inspired by [singularpoint.cn](https://singularpoint.cn/hideImg1.html).
 
-## Features
+## 功能特点 (Features)
 
-- **Client-side processing**: All processing happens in your browser. No images are uploaded to a server.
-- **Hilbert Curve Scrambling**: Uses space-filling curves to scramble pixel positions while preserving some locality (in specific modes) or maximizing chaos.
-- **Key-based Encryption**: Secure your images with a password. The same password is required to decrypt.
-- **Compression Resistant**: The scrambling method allows the image to be saved as PNG/JPEG and still be recoverable (with some quality loss for JPEG).
+-   **纯前端处理 (Client-side processing)**: 所有处理都在浏览器中完成，图片不上传服务器，保护隐私。
+-   **Hilbert 曲线混淆 (Hilbert Curve Scrambling)**: 使用空间填充曲线对像素位置进行重排。
+-   **无损还原 (Reversibility)**: 支持混淆后的图片无损还原（建议保存为 PNG）。
+-   **抗压缩 (Compression Resistant)**: 即使保存为 JPEG（会有轻微画质损失），依然可以还原出可识别的内容。
 
-## How to Run
+## 部署 (Deployment)
 
-### Local Development
+本项目已配置好 `Dockerfile` 和 `nginx.conf`，可直接部署在 [Zeabur](https://zeabur.com) 等容器平台。
 
-1. Clone the repository.
-2. Open `index.html` in your browser.
-   - Note: For the Web Worker or certain features to work properly, you might need to serve it via a local server (e.g., VS Code Live Server, or `python -m http.server`).
+1.  Push code to GitHub.
+2.  Create a service on Zeabur and select the repository.
+3.  The project will be automatically built and deployed.
 
-### Deployment (Zeabur)
-
-This project is ready for deployment on [Zeabur](https://zeabur.com).
-
-1. Create a new project on Zeabur.
-2. Connect your GitHub repository.
-3. Zeabur will automatically detect the `Dockerfile` and deploy the static site using Nginx.
-
-## Technical Details
-
-- **Algorithm**: The image pixels are reordered based on a Hilbert Curve traversal.
-- **Obfuscation**: A seeded permutation (using the provided key) shuffles the pixels along the 1D Hilbert path.
-- **Reversibility**: The process is fully reversible if the image is saved losslessly (PNG). If saved as JPEG, artifacts may appear upon decryption but the content remains recognizable.
-
-## License
+## 许可证 (License)
 
 MIT
+
+---
+*Last Updated: 2026-03-10*
